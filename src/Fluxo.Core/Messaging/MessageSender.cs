@@ -12,41 +12,33 @@ namespace Fluxo.Core.Messaging
         private readonly ILogger<MessageSender> _logger;
         private readonly IConfiguration _configuration;
 
-        public MessageSender(ILogger<MessageSender> logger)
+        public MessageSender(ILogger<MessageSender> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _configuration = configuration;
         }
 
         public async Task Send<T>(string topicOrQueue, T message)
         {
-            var section = _configuration.GetRequiredSection("RabbitMq");
+            var rabbitMqConfiguration = _configuration.GetRequiredSection("RabbitMq");
 
             // Configurações de conexão com o RabbitMQ
-            var factory = new ConnectionFactory
-            {
-                HostName = "localhost", // Endereço do servidor RabbitMQ
-                UserName = "guest",     // Usuário padrão
-                Password = "guest"      // Senha padrão
-            };
-
+            var factory = new ConnectionFactory();
+            factory.Uri = new Uri(rabbitMqConfiguration["Connection"].ToString());
             using var connection = await factory.CreateConnectionAsync();
             using var channel = await connection.CreateChannelAsync();
 
-            // Declarar o tópico (exchange)
-            //string exchangeName = "my_topic_exchange";
-            //channel.ExchangeDeclare(exchange: exchangeName, type: ExchangeType.Topic);
-            await channel.QueueDeclareAsync(topicOrQueue, durable: true);
-
-            // Mensagem a ser enviada
-            string routingKey = "lancamento.created"; // Define a chave de roteamento
+            await channel.QueueDeclareAsync(topicOrQueue, durable: true, exclusive: false, autoDelete: false);
 
             var json = JsonSerializer.Serialize(message);
-            var body = Encoding.UTF8.GetBytes(json);
+            var body = Encoding.UTF8.GetBytes(json);          
 
-            // Publicar a mensagem
-            await channel.BasicPublishAsync(topicOrQueue, "lancamento.created", body);
+            await channel.BasicPublishAsync(
+                exchange: null,  
+                routingKey: topicOrQueue, 
+                body);
 
-            Console.WriteLine($" [x] Sent '{message}' with Routing Key '{routingKey}'");
+            Console.WriteLine($" [x] Sent '{message}' with Routing Key '{topicOrQueue}'");
 
             _logger.LogInformation($"Mensagem enviada para tópico {topicOrQueue}: " + message.ToString());
         }

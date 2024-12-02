@@ -30,5 +30,13 @@ namespace Fluxo.Api.Controllers
 
             return Ok();
         }
+
+        [HttpPost("ReenviarConsolidacao")]
+        public async Task<IActionResult> ReenviarConsolidacao(LancamentoReenvioCmd cmd)
+        {
+            await _mediator.Send(cmd);
+
+            return Ok();
+        }
     }
 }

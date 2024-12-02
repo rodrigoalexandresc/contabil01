@@ -1,4 +1,5 @@
-﻿using Fluxo.Core.Lancamentos.Repositories;
+﻿using Fluxo.Core.Lancamentos.Mappers;
+using Fluxo.Core.Lancamentos.Repositories;
 using Fluxo.SharedKernel.Bus;
 using Fluxo.SharedKernel.Lancamentos;
 using MediatR;
@@ -21,16 +22,7 @@ namespace Fluxo.Core.Lancamentos.Handlers
         {
             var lancamento = await _lancamentoRepository.GetAll()
                 .Where(o => o.Id == notification.LancamentoId)
-                .Select(o => new LancamentoCreatedMessage
-                {
-                    LancamentoId = o.Id,
-                    DataMovimentacao = o.DataMovimentacao,
-                    FormaPagamento = o.FormaPagamento != null ? o.FormaPagamento.Descricao : string.Empty,
-                    GrupoConsolidacao = o.TipoLancamento.Grupo,                    
-                    TipoLancamento = o.TipoLancamento.Descricao,
-                    TipoOperacao = (int)o.TipoLancamento.TipoOperacaoPadrao,
-                    Valor = o.Valor,
-                })
+                .Select(o => o.MapToLancamentoCreatedMessage())
                 .FirstOrDefaultAsync();
 
             await _messageSender.Send(TopicConsts.LancamentoFluxo, notification);
